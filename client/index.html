@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://npmcdn.com/babel-core@5.8.38/browser.min.js"></script>
+    <script type="text/babel" >
+        "use strict";
+        let socket;
+        
+        let draws = {};
+        
+        let canvas;
+        let ctx;
+        let sendBufferCanvas;
+        let sendBufferCtx;
+        
+        const init = (e) => {
+            canvas = document.querySelector('canvas');
+            ctx = canvas.getContext('2d');
+            
+            socket = io.connect();
+            setupSocket();
+            setupCanvas();
+        };
+        window.onload = init;
+        
+        const handleMessage = (data) => {
+            let image = new Image();
+            
+            image.onload = () => {
+                ctx.save();
+                ctx.globalCompositeOperation = "source-over";
+                ctx.drawImage(image, data.x, data.y, data.width, data.height);
+                ctx.restore();
+            };
+            image.src = data.imgData;
+        };
+        
+        const setupSocket = (e) => {
+             socket.on('connect', () => {
+                socket.emit('join', null);
+            });
+            socket.on('updateCanvas', (data) => {
+                handleMessage(data);
+            });
+
+        };
+        const setupCanvas = (e) => {
+            //draw a random square
+            ctx.fillStyle = "rgb("+Math.floor(Math.random()*256)+","+Math.floor(Math.random()*256)+","+Math.floor(Math.random()*256)+")";
+            ctx.fillRect(Math.floor(Math.random()*640), Math.floor(Math.random()*480), 100, 100);
+            
+            sendBufferCanvas = document.createElement("canvas");
+            sendBufferCanvas.height = 480;
+            sendBufferCanvas.width = 640;
+            sendBufferCtx = sendBufferCanvas.getContext("2d");
+            
+            
+            sendBufferCtx.fillRect(0,0,640,480);
+            
+            const data = {
+                x: 550,
+                y: 800,
+                height: 480,
+                width: 640,
+                imgData: sendBufferCanvas.toDataURL()
+            };
+            
+            socket.emit("draw", data);
+        };
+        
+        const update = (e) => {
+            const data = {
+                x: 0,
+                y: 0,
+                height: 480,
+                width: 640,
+                imgData: canvas.toDataURL()
+            };
+             socket.emit("draw", data);
+        };
+        
+        setInterval(update, 3000);
+        
+    
+    </script>
+</head>
+<body>
+    <canvas width="640" height="480">
+		Your browser does not support Canvas
+	</canvas>
+</body>
+</html>
